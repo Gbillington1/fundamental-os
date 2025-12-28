@@ -1,0 +1,8 @@
+# .cargo/config.toml
+[build]
+target = "aarch64-unknown-none" # bare metal ARM64
+
+[target.aarch64-unknown-none]
+rustflags = [
+  "-C", "link-args=-Tlinker.ld" # use our own custom linker script
+]

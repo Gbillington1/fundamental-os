@@ -1,0 +1,15 @@
+# rust artifacts
+target
+**/*.rs.bk
+Cargo.lock
+
+# build binaries
+*.img
+*.elf
+*.bin
+
+# ide and os junk
+.vscode/
+.idea/
+.DS_Store
+*.swp
