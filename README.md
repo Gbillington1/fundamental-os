@@ -1,8 +1,8 @@
-# fundamental-os specs
+# FundamentalOS 
 
-a bare-metal 64-bit ARM (AArch64) operating system written in Rust.
+A bare-metal 64-bit ARM (AArch64) operating system written in Rust.
 
-## hardware
+## Hardware
 - architecture: aarch64
 - machine: qemu virt
 - cpu: cortex-a57
@@ -10,7 +10,7 @@ a bare-metal 64-bit ARM (AArch64) operating system written in Rust.
 - kernel load: 0x40080000
 - uart mmio: 0x09000000
 
-## progress
+## Progress
 - [x] multi-core parking
 - [x] stack setup
 - [x] fpu/simd enablement
