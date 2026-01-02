@@ -30,9 +30,11 @@ SECTIONS
 
   /* BSS (zero-initialized) section - this is cleared in assembly */
   .bss : {
-   __bss_start = .;
-    *(.bss .bss.*)
     . = ALIGN(8) ; /* align to 8 byte boundary for assembly loop */
+    __bss_start = .;
+    *(.bss .bss.*)
+    *(COMMON)
+    . = ALIGN(8);
     __bss_end = .;
   }
 
@@ -45,6 +47,12 @@ SECTIONS
     __stack_bottom = .;
     . += 0x10000; /* reserve 64KB for the kernel */
     __stack_top = .;
+  }
+
+  /* exception vector table section, aligned to 2048 bytes */
+  . = ALIGN(2048);
+  .exceptions : {
+    KEEP(*(.exceptions))
   }
 
   /* ignore sections we don't need for a simple kernel */

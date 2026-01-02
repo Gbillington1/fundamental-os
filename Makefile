@@ -6,7 +6,7 @@ IMG = kernel.img
 
 all: $(IMG)
 
-$(IMG): src/main.rs src/boot.s linker.ld
+$(IMG): src/main.rs src/exceptions.rs src/boot.s src/exceptions.s linker.ld
 	cargo build
 	rust-objcopy -O binary $(BINARY) $(IMG)
 

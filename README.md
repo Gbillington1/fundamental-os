@@ -16,7 +16,8 @@ A bare-metal 64-bit ARM (AArch64) operating system written in Rust.
 - [x] fpu/simd enablement
 - [x] uart polling driver
 - [x] rust kmain entry
-- [ ] exception vector table
+- [x] exception vector table
+  - [ ] restore registers before exception returns
 - [x] rust panic handler
 - [ ] interrupt controller (gic)
 - [ ] page frame allocator

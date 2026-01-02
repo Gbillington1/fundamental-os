@@ -2,19 +2,22 @@
 #![no_std]
 #![no_main]
 
+mod exceptions;
+
 use core::panic::PanicInfo;
 use core::arch::global_asm;
 use core::arch::asm;
 use core::ptr::write_volatile;
 
-// inject assembly from boot.sh into the compilation unit
+// inject boot & exception vector table asm
 global_asm!(include_str!("boot.s"));
+global_asm!(include_str!("exceptions.s"));
 
 const UART_DR : *mut u32 = 0x900_0000 as *mut u32;
 
 // halt instruction
 #[inline(always)]
-fn halt() -> ! {
+pub(crate) fn halt() -> ! {
     loop {
         // aarch64 wait for event asm
         unsafe { asm!("wfe") }
@@ -22,21 +25,21 @@ fn halt() -> ! {
 }
 
 // write a byte to the UART interface 
-fn uart_putc(byte: u8) {
+pub(crate) fn uart_putc(byte: u8) {
     unsafe {
         write_volatile(UART_DR, byte as u32);
     }
 }
 
 // kernel space print
-fn printk(s: &str) {
+pub(crate) fn printk(s: &str) {
     for byte in s.bytes() {
         uart_putc(byte);
     }
 }
 
 // prints a u64 int as a string
-fn printk_u64(mut n: u64) {
+pub(crate) fn printk_u64(mut n: u64) {
     if n == 0 {
         uart_putc(b'0');
         return;
@@ -62,10 +65,19 @@ fn printk_u64(mut n: u64) {
     }
 }
 
+// prints a u64 int as hex
+pub(crate) fn printk_hex(v: u64) {
+    printk("0x");
+    for i in (0..16).rev() {
+        let nib = ((v >> (i * 4)) & 0xF) as u8;
+        uart_putc(if nib < 10 { b'0' + nib } else { b'a' + (nib - 10) });
+    }
+}
+
 // Panic handler
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    printk("\n\n=== KERNEL PANIC ===\n");
+    printk("\n=== KERNEL PANIC ===\n");
 
     // print msg
     printk("msg: ");
@@ -88,7 +100,7 @@ fn panic(info: &PanicInfo) -> ! {
     } else {
         printk("(unknown)\n");
     }
-    printk("====================\n\n\n");
+    printk("====================\n");
 
     // stop execution
     halt();
@@ -104,7 +116,10 @@ pub extern "C" fn kmain() -> ! {
     // say something to the user
     printk("=== FUNDAMENTAL OS ===\n");
     printk("Boot sequence complete.\n");
-    panic!("this is a test panic!");
+
+    // trigger exception
+    unsafe { asm!("brk #0"); }
+
     // after init, the kernel enters an idle loop
     // TODO: jump to scheduler or shell
     loop {}

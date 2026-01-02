@@ -7,10 +7,8 @@
 .global _start
 
 _start:
-  // 1. Multicore sync
   // read the multiprocessor affinity register (MPIDR_EL1) 
   // to restrict execution to the core with ID 0
-  // EL1 means "Exception Level 1", which is the kernel level
   mrs x0, MPIDR_EL1
 
   // extract the core id, which is affinity level 0 (bits 0-7)
@@ -20,35 +18,37 @@ _start:
   // else, pause execution
   cbz x0, primary_core
 
+// sleep non-primary cores
 pause_exe:
-  // Put non-primary cores into a low-power sleep loop
   wfe
   b pause_exe
 
 primary_core:
-  // enabled FP/SIMD access for floating point registers
+  // enable FP/SIMD access for floating point registers
   // set bits 20 and 21 of CPARCR_EL1 to 0b11
-  mov x0, #(3 << 20) // enable EL0/EL1 access
+  mov x0, #(3 << 20) 
   msr cpacr_el1, x0
-  isb // barrier to ensure the change takes effect
+  isb 
 
-
-  // 2. Initialize the stack pointer using linker symbol
+  // move top of stack addr into stack pointer reg
   ldr x0, =__stack_top
   mov sp, x0
 
-  // 3. Clear BSS section 
-  // The symbols below are provided by the linker.ld script
-  // __bss_start: The memory address where unitialized globals begin
-  // __bss_size: The number of 8-byte blocks to clear
+  // load execption vector table address into VBAR for level EL1
+  ldr x0, =__exceptions
+  msr VBAR_EL1, x0
+  isb
+
+  // load bss start & size into registers
   ldr x1, =__bss_start
   ldr w2, =__bss_size
 
-  // if BSS size is 0, jump straight to rust
+  // if bss size is 0, jump straight to rust
   cbz w2, jump_to_rust
 
+// else, zero bss section
 zero_loop:
-  // Store zero (xzr) in the address held in x1, then increment x1 by 8
+  // store zero (xzr) in the address held in x1, then increment x1 by 8
   str xzr, [x1], #8
 
   // decrement the counter (w2) and update CPU flags 
@@ -58,11 +58,9 @@ zero_loop:
   bne zero_loop
 
 jump_to_rust:
-  // 3. Hand execution over to Rust
+  // hand off to rust
   // branch with link to "kmain"
-  // calls rust function defined in main.rs
   bl kmain
-
 
 halt:
   // for safety, if kmain ever returns, hang the CPU in a loop
