@@ -1,6 +1,6 @@
 # FundamentalOS 
 
-A bare-metal 64-bit ARM (AArch64) operating system written in Rust.
+A bare-metal 64-bit ARM (AArch64) operating system written in Rust. Applying the fundamentals of OS theory to a real project.
 
 ## Hardware
 - architecture: aarch64
@@ -11,12 +11,12 @@ A bare-metal 64-bit ARM (AArch64) operating system written in Rust.
 - uart mmio: 0x09000000
 
 ## Progress
-- [x] multi-core parking
+- [x] boot loader
 - [x] stack setup
-- [x] fpu/simd enablement
-- [x] uart polling driver
+- [x] printing with uart
 - [x] rust kmain entry
 - [x] exception vector table
+  - [x] rust exception handler
   - [ ] restore registers before exception returns
 - [x] rust panic handler
 - [ ] interrupt controller (gic)
