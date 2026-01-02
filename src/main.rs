@@ -116,9 +116,13 @@ pub extern "C" fn kmain() -> ! {
     // say something to the user
     printk("=== FUNDAMENTAL OS ===\n");
     printk("Boot sequence complete.\n");
-
+    
     // trigger exception
-    unsafe { asm!("brk #0"); }
+    unsafe {
+        let p = 0xDEAD_BEEF_DEAD_BEE0 as *mut u64;
+        core::ptr::write_volatile(p, 1);
+    }
+//    unsafe { asm!("brk #0"); }
 
     // after init, the kernel enters an idle loop
     // TODO: jump to scheduler or shell

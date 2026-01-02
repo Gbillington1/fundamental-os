@@ -80,18 +80,15 @@ vec_\n:
 // macro to define table entry
 .macro ENTRY label
   b \label
-  .rept (128 - 4)
+  .rept 31 
     nop
   .endr
 .endm
 
 __exceptions:
 
-// 16 entries in required order
 .irp n,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
   ENTRY vec_\n
 .endr
-
-
 
 // TODO: Restore registers before returning from exception (eret)
