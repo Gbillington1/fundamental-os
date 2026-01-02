@@ -15,6 +15,7 @@
 
 // save all x0 - x30 to sp, plus SP/ELR/SPSR/ESR/FAR and vector id
 .macro SAVE_AND_CALL id
+  // allocate space on the stack for the TrapFrame
   sub sp, sp, #TF_SIZE
 
   // save general purpose regs. as pairs, then x30 on its own
@@ -60,9 +61,37 @@
   mov x0, sp
   bl exception_handler
 
-1: 
-  wfe
-  b 1b
+  // restore system registers
+  ldr x0, [sp, #TF_ELR_OFF]
+  msr ELR_EL1, x0
+  
+  ldr x0, [sp, #TF_SPSR_OFF]
+  msr SPSR_EL1, x0
+
+  // restore general purpose registers
+  ldp x0, x1, [sp, #(TF_X_OFF + 0)]
+  ldp x2, x3, [sp, #(TF_X_OFF + 16)]
+  ldp x4, x5, [sp, #(TF_X_OFF + 32)]
+  ldp x6, x7, [sp, #(TF_X_OFF + 48)]
+  ldp x8, x9, [sp, #(TF_X_OFF + 64)]
+  ldp x10, x11, [sp, #(TF_X_OFF + 80)]
+  ldp x12, x13, [sp, #(TF_X_OFF + 96)]
+  ldp x14, x15, [sp, #(TF_X_OFF + 112)]
+  ldp x16, x17, [sp, #(TF_X_OFF + 128)]
+  ldp x18, x19, [sp, #(TF_X_OFF + 144)]
+  ldp x20, x21, [sp, #(TF_X_OFF + 160)]
+  ldp x22, x23, [sp, #(TF_X_OFF + 176)]
+  ldp x24, x25, [sp, #(TF_X_OFF + 192)]
+  ldp x26, x27, [sp, #(TF_X_OFF + 208)]
+  ldp x28, x29, [sp, #(TF_X_OFF + 224)]
+  ldr x30, [sp, #(TF_X_OFF + 240)]
+
+  // pop TrapFrame off the stack
+  add sp, sp, #TF_SIZE
+
+  // return to address saved in ELR_EL1
+  eret
+
 .endm
 
 // define 16 handlers first in the text section

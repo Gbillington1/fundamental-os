@@ -3,6 +3,7 @@
 #![no_main]
 
 mod exceptions;
+mod syscall;
 
 use core::panic::PanicInfo;
 use core::arch::global_asm;
@@ -118,12 +119,13 @@ pub extern "C" fn kmain() -> ! {
     printk("Boot sequence complete.\n");
     
     // trigger exception
-    unsafe {
-        let p = 0xDEAD_BEEF_DEAD_BEE0 as *mut u64;
-        core::ptr::write_volatile(p, 1);
-    }
-//    unsafe { asm!("brk #0"); }
+    //unsafe {
+    //    let p = 0xDEAD_BEEF_DEAD_BEE0 as *mut u64;
+    //    core::ptr::write_volatile(p, 1);
+    //}
+    unsafe { asm!("brk #0"); }
 
+    printk("We're back in the kernel main!\n");
     // after init, the kernel enters an idle loop
     // TODO: jump to scheduler or shell
     loop {}

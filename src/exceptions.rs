@@ -1,17 +1,19 @@
 // src/exceptions.rs
 // all code relating to exception vector table
 
-use crate::{ printk, printk_u64, printk_hex, halt };
+use crate::{ printk, printk_u64, printk_hex };
+use crate::syscall::handle_syscall;
 
 #[repr(C)]
-pub struct TrapFrame {
-    pub x: [u64; 31], // x0 through x30
-    pub sp: u64, // stack pointer at exception entry
-    pub elr_el1: u64,
-    pub spsr_el1: u64,
-    pub esr_el1: u64,
-    pub far_el1: u64,
-    pub vector_id: u64, // 0 through 15
+pub(crate) struct TrapFrame {
+    pub(crate) x: [u64; 31], // x0 through x30
+    pub(crate) sp: u64, // stack pointer at exception entry
+    pub(crate) elr_el1: u64,
+    pub(crate) spsr_el1: u64,
+    pub(crate) esr_el1: u64,
+    pub(crate) far_el1: u64,
+    pub(crate) vector_id: u64, // 0 through 15
+    pub(crate) _padding: u64, // make total size 304 (aligned with asm)
 }
 
 // extracts the exception class (EC) field from ESR_EL1
@@ -21,38 +23,81 @@ fn esr_ec(esr: u64) -> u64 { (esr >> 26) & 0x3f }
 fn esr_iss(esr: u64) -> u64 { esr & 0x01ff_ffff }
 
 // common EC values
-const EC_SVC_A64: u64 = 0b010101;
-const EC_INSN_ABORT_CURR: u64 = 0b100001;
-const EC_DATA_ABORT_CURR: u64 = 0b100101;
-const EC_BRK_A64: u64 = 0b111100;
+const EC_SVC_A64: u64 = 0x15;
+const EC_INSN_ABORT_CURR: u64 = 0x21;
+const EC_DATA_ABORT_CURR: u64 = 0x25;
+const EC_BRK_A64: u64 = 0x3C;
+
+fn log_exception(tf: &mut TrapFrame, ec: u64, iss: u64) {
+    printk("\n=== EXCEPTION ===\n");
+    printk("Source Vector: "); printk_u64(tf.vector_id);
+
+    // determine source of exception based on vector id
+    match tf.vector_id {
+        0..=3 => printk(" (Current EL with SP0)\n"),
+        4..=7 => printk(" (Current EL with SPx)\n"),
+        8..=11 => printk(" (Lower EL - AArch46)\n"),
+        12..=15 => printk(" (Lower EL - Aarch32)\n"), 
+        _ => printk(" (Unknown EC)\n"),
+    }
+
+    printk("Exception Class (EC): "); printk_hex(ec);
+    printk(" | ISS: "); printk_hex(iss); printk("\n");
+
+    // map EC to human name
+    let description = match ec {
+        EC_SVC_A64 => "SVC Instruction (System Call)",
+        EC_INSN_ABORT_CURR => "Instruction Abort (Current EL)",
+        EC_DATA_ABORT_CURR => "Data Abort (Current EL)",
+        EC_BRK_A64 => "Breakpoint (BRK)",
+        _ => "Unknown Syndrome",
+    };
+
+    printk("Description: "); printk(description); printk("\n");
+    printk("Faulting PC (ELR): "); printk_hex(tf.elr_el1); printk("\n");
+
+    // only print FAR if memory fault (abort)
+    if ec == EC_DATA_ABORT_CURR || ec == EC_INSN_ABORT_CURR {
+        printk("Fault Address (FAR): "); printk_hex(tf.far_el1); printk("\n");
+    }
+    
+    printk("=================\n");
+}
 
 #[unsafe(no_mangle)]
-pub extern "C" fn exception_handler(tf: *mut TrapFrame) -> ! {
-    let tf = unsafe { &*tf };
+pub extern "C" fn exception_handler(tf: *mut TrapFrame) {
+    let tf = unsafe { &mut *tf };
 
     let ec = esr_ec(tf.esr_el1);
     let iss = esr_iss(tf.esr_el1);
 
-    printk("\n=== EXCEPTION ===\n");
-    printk("vector_id: "); printk_u64(tf.vector_id); printk("\n");
+    log_exception(tf, ec, iss);
 
-    printk("ESR_EL1: "); printk_hex(tf.esr_el1); printk("\n");
-    printk("    EC: "); printk_u64(ec); printk(" ");
-    printk("ISS: "); printk_hex(iss); printk("\n");
-
-    printk("    Type: ");
+    // route exception
     match ec {
-        EC_BRK_A64 => printk("BRK (breakpoint)\n"),
-        EC_SVC_A64 => printk("SVC (syscall)\n"),
-        EC_DATA_ABORT_CURR => printk("Data Abort (current EL)\n"),
-        EC_INSN_ABORT_CURR => printk("Instruction Abort (current EL)\n"),
-        _ => printk("Unknown/Unhandled\n"),
-    }
-    
-    printk("ELR_EL1: "); printk_hex(tf.elr_el1); printk("\n");
-    printk("FAR_EL1: "); printk_hex(tf.far_el1); printk("\n");
-    printk("SPSR_EL1: "); printk_hex(tf.spsr_el1); printk("\n");
-    printk("=================\n");
+        // software breakpoint
+        EC_BRK_A64 => {
+            // skip the break instruction so we don't loop
+            tf.elr_el1 += 4;
+        }
 
-    halt();
+        // system call
+        EC_SVC_A64 => {
+            handle_syscall(tf, iss);
+            // skip svc instruction
+            tf.elr_el1 += 4;
+        }
+
+        // fatal memory errors
+        EC_DATA_ABORT_CURR | EC_INSN_ABORT_CURR => {
+            let fault_type = if ec == EC_INSN_ABORT_CURR { "Instruction" } else { "Data" };
+            printk(fault_type); printk(" abort at : "); printk_hex(tf.far_el1); printk("\n");
+            panic!("Fatal memory exception");
+            
+        }
+
+        _ => {
+            panic!("Unhandled exception. Halting.");
+        }
+    }
 }

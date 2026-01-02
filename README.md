@@ -15,10 +15,12 @@ A bare-metal 64-bit ARM (AArch64) operating system written in Rust. Applying the
 - [x] stack setup
 - [x] printing with uart
 - [x] rust kmain entry
+- [x] rust panic handler
 - [x] exception vector table
   - [x] rust exception handler
-  - [ ] restore registers before exception returns
-- [x] rust panic handler
+  - [x] restore registers before exception returns
+  - [x] light exception routing 
+  - [x] syscall crate scaffolding (no implementation yet)
 - [ ] interrupt controller (gic)
 - [ ] page frame allocator
 - [ ] mmu and page tables
