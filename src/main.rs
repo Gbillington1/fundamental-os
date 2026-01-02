@@ -4,42 +4,94 @@
 
 use core::panic::PanicInfo;
 use core::arch::global_asm;
+use core::arch::asm;
+use core::ptr::write_volatile;
 
 // inject assembly from boot.sh into the compilation unit
 global_asm!(include_str!("boot.s"));
 
-// UART (serial port) abstraction
-// QEMU's virtual machine has the UART serial port mapped to 0x900_0000
-struct Uart {
-    base_address: *mut u8,
+const UART_DR : *mut u32 = 0x900_0000 as *mut u32;
+
+// halt instruction
+#[inline(always)]
+fn halt() -> ! {
+    loop {
+        // aarch64 wait for event asm
+        unsafe { asm!("wfe") }
+    }
 }
 
-impl Uart {
-    // initialize the UART driver by casting the physical
-    // address to a raw pointer
-    pub fn new(address: usize) -> Self {
-        Uart {
-            base_address: address as *mut u8,
-        }
+// write a byte to the UART interface 
+fn uart_putc(byte: u8) {
+    unsafe {
+        write_volatile(UART_DR, byte as u32);
+    }
+}
+
+// kernel space print
+fn printk(s: &str) {
+    for byte in s.bytes() {
+        uart_putc(byte);
+    }
+}
+
+// prints a u64 int as a string
+fn printk_u64(mut n: u64) {
+    if n == 0 {
+        uart_putc(b'0');
+        return;
     }
 
-    // write a single byte to the hardware
-    pub fn write_byte(&self, byte: u8) {
-        // MMIO Note: using write_volatile to let the complier know
-        // that this mem write has side effects (printing to screen)
-        // and it shouldn't be optimized
-        unsafe {
-            core::ptr::write_volatile(self.base_address, byte);
-        }
+    // create buffer of 20 digits
+    let mut buf = [0u8; 20];
+    // digit index
+    let mut i = 0usize;
+
+    // extract digits (base 10 comp.)
+    while n > 0 {
+        let digit = (n % 10) as u8;
+        buf[i] = b'0' + digit;
+        n /= 10;
+        i += 1;
     }
 
-    // iterate over a string slice and
-    // write each byte to the UART
-    pub fn write_string(&self, s: &str) {
-        for byte in s.bytes() {
-            self.write_byte(byte);
-        }
+    // print digits to uart (in reverse)
+    while i > 0 {
+        i -= 1;
+        uart_putc(buf[i]);
     }
+}
+
+// Panic handler
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
+    printk("\n\n=== KERNEL PANIC ===\n");
+
+    // print msg
+    printk("msg: ");
+    if let Some(msg) = info.message().as_str() {
+        printk(msg);
+        printk("\n");
+    } else {
+        printk("(non-str panic)\n");
+    }
+
+    // print location
+    printk("at: ");
+    if let Some(loc) = info.location() {
+        printk(loc.file());
+        printk(", line ");
+        printk_u64(loc.line() as u64);
+        printk(", col ");
+        printk_u64(loc.column() as u64);
+        printk("\n");
+    } else {
+        printk("(unknown)\n");
+    }
+    printk("====================\n\n\n");
+
+    // stop execution
+    halt();
 }
 
 // KERNEL MAIN FUNCTION
@@ -48,25 +100,15 @@ impl Uart {
 // -> !: the "never" type, stating that this function never returns to caller
 #[unsafe(no_mangle)]
 pub extern "C" fn kmain() -> ! {
-    // init our UART driver with the QEMU virtual hardware address
-    let uart = Uart::new(0x0900_0000);
 
     // say something to the user
-    uart.write_string("FundamentalOS: Boot sequence complete.\n");
-    uart.write_string("Hello Graham, the kernel is now in control.\n");
-
+    printk("=== FUNDAMENTAL OS ===\n");
+    printk("Boot sequence complete.\n");
+    panic!("this is a test panic!");
     // after init, the kernel enters an idle loop
     // TODO: jump to scheduler or shell
     loop {}
 }
 
-// Panic handler
-// since we have no OS to catch crashes, we must define what happens
-// if the rust code panics
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    // for now, if we panic, we just hang the system
-    // TODO: use Uart struct to print the error message here
-    loop {}
-}
+
 

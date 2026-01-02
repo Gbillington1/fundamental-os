@@ -68,12 +68,3 @@ halt:
   // for safety, if kmain ever returns, hang the CPU in a loop
   wfe
   b halt
-
-
-
-
-
-
-
-
-

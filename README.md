@@ -17,7 +17,7 @@ A bare-metal 64-bit ARM (AArch64) operating system written in Rust.
 - [x] uart polling driver
 - [x] rust kmain entry
 - [ ] exception vector table
-- [ ] rust panic handler
+- [x] rust panic handler
 - [ ] interrupt controller (gic)
 - [ ] page frame allocator
 - [ ] mmu and page tables
