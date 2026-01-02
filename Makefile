@@ -14,6 +14,18 @@ run: $(IMG)
 	qemu-system-aarch64 -M virt -cpu cortex-a57 -display none -serial stdio \
 		-kernel $(IMG) 
 
+# runs kernel in gdb
+gdb: $(IMG)
+	qemu-system-aarch64 -M virt -cpu cortex-a57 -display none \
+		-serial stdio \
+		-kernel $(IMG) -S -s & \
+	\
+	sleep 0.2; \
+	\
+	gdb -ex "target remote :1234" $(BINARY); \
+	\
+	kill $$(jobs -p)
+
 clean:
 	cargo clean
 	rm -f $(IMG)
