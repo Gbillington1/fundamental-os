@@ -1,0 +1,40 @@
+This is a list of some helpful vim commands that I have been learning throughout this project.
+I'm using lazy nvim
+
+space + sk: open search keys to find shortcuts
+
+space + fc: find config file 
+
+space + e: open file explorer
+while in explorer:
+  - a: create new file
+
+ctrl + /: toggle integrated terminal
+
+navigating between buffers:
+shift + h: move to left buffer
+shift + l: move to right buffer
+
+splitting windows:
+space + |: split to the right
+space + -: split to the bottom
+
+navigating between windows:
+ctrl + h: move to left window
+ctrl + j: move to bottom window
+ctrl + k: move to top window
+ctrl + l: move to right window
+
+resizing windows:
+ctrl + Up: increase height
+ctrl + Down: decrease height
+ctrl + Left: increase width left
+ctrl + Right: increase width right
+
+removing windows:
+space + wd: window delete (window but the buffer)
+space + bd: buffer delete (buffer but not the window)
+space + bD: buffer and window delete
+
+:s/find/replace -> regex find and replace
+also works over selected area in visual block mode
