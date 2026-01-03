@@ -3,6 +3,7 @@
 
 use crate::{ printk, printk_u64, printk_hex };
 use crate::syscall::handle_syscall;
+use crate::gic; 
 
 #[repr(C)]
 pub(crate) struct TrapFrame {
@@ -67,13 +68,37 @@ fn log_exception(tf: &mut TrapFrame, ec: u64, iss: u64) {
 #[unsafe(no_mangle)]
 pub extern "C" fn exception_handler(tf: *mut TrapFrame) {
     let tf = unsafe { &mut *tf };
+    
+    match tf.vector_id {
+        // iqr interrupts (5 for current EL and 9 for lower EL)
+        5 | 9 => {
+            gic::handle_iqr(tf);
+        }
 
+        // synchronous execptions (crashes / syscalls)
+        // 4 for current EL and 8 for lower EL
+        4 | 8 => {
+            handle_synchronous(tf);
+        }
+
+        _ => {
+            printk("Unknown Vector ID: "); printk_u64(tf.vector_id); printk("\n");
+            panic!("Unhandled exception vector");
+        }
+    }
+     
+}
+
+fn handle_synchronous(tf: &mut TrapFrame) {
     let ec = esr_ec(tf.esr_el1);
     let iss = esr_iss(tf.esr_el1);
 
-    log_exception(tf, ec, iss);
+    // only log if its a crash
+    if ec != EC_SVC_A64 {
+        log_exception(tf, ec, iss);
+    }
 
-    // route exception
+    // route sync exception
     match ec {
         // software breakpoint
         EC_BRK_A64 => {
