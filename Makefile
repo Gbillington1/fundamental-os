@@ -3,10 +3,12 @@
 TARGET = aarch64-unknown-none
 BINARY = target/$(TARGET)/debug/fundamental-os
 IMG = kernel.img
+RUST = src/main.rs src/exceptions.rs src/syscall.rs src/gic.rs src/timer.rs
+ASM = src/boot.s src/exceptions.s
 
 all: $(IMG)
 
-$(IMG): src/main.rs src/exceptions.rs src/syscall.rs src/boot.s src/exceptions.s linker.ld
+$(IMG): $(RUST) $(ASM) linker.ld
 	cargo build
 	rust-objcopy -O binary $(BINARY) $(IMG)
 

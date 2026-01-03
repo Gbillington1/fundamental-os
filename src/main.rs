@@ -4,6 +4,8 @@
 
 mod exceptions;
 mod syscall;
+mod gic;
+mod timer;
 
 use core::panic::PanicInfo;
 use core::arch::global_asm;
@@ -117,18 +119,18 @@ pub extern "C" fn kmain() -> ! {
     // say something to the user
     printk("=== FUNDAMENTAL OS ===\n");
     printk("Boot sequence complete.\n");
-    
-    // trigger exception
-    //unsafe {
-    //    let p = 0xDEAD_BEEF_DEAD_BEE0 as *mut u64;
-    //    core::ptr::write_volatile(p, 1);
-    //}
-    unsafe { asm!("brk #0"); }
 
-    printk("We're back in the kernel main!\n");
-    // after init, the kernel enters an idle loop
-    // TODO: jump to scheduler or shell
-    loop {}
+    // init interrupt controller
+    unsafe { gic::init(); }
+
+    // init timer
+    timer::init();
+
+    // enable interrupts on the CPU
+    unsafe { asm!("msr daifclr, #2"); }
+    printk("Interrupts initialized. Waiting for ticks...\n");
+
+    halt();
 }
 
 
