@@ -21,7 +21,8 @@ A bare-metal 64-bit ARM (AArch64) operating system written in Rust. Applying the
   - [x] restore registers before exception returns
   - [x] light exception routing 
   - [x] syscall crate scaffolding (no implementation yet)
-- [ ] interrupt controller (gic)
+- [x] interrupt controller (gic)
+  - [x] basic timer interrupt
 - [ ] page frame allocator
 - [ ] mmu and page tables
 - [ ] heap allocator
